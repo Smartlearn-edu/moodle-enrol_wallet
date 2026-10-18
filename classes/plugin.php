@@ -699,8 +699,8 @@ class enrol_wallet_plugin extends enrol_plugin {
             $data->instance = $instance;
 
             // The can_self_enrol call returns a button to the login page if the user is a
-            // guest, setting the login url to the form if that is the case.
-            $url = isguestuser() ? get_login_url() : null;
+            // guest or not logged in, setting the login url to the form if that is the case.
+            $url = (isguestuser() || !isloggedin()) ? get_login_url() : null;
             $form = new empty_form($url, $data);
 
             ob_start();
@@ -726,9 +726,22 @@ class enrol_wallet_plugin extends enrol_plugin {
         $repurchase = config::make()->repurchase;
         $instance = $this->get_helper($instance);
 
-        if (isguestuser()) {
-            // Can not enrol guest.
-            return get_string('noguestaccess', 'enrol') . $OUTPUT->continue_button(get_login_url());
+        if (isguestuser() || !isloggedin()) {
+            // Can not enrol guest or unauthenticated user.
+            $costafter = $instance->get_cost_after_discount();
+            $costbefore = $instance->cost;
+            $currency = $instance->currency ?? config::make()->currency ?? '';
+            $coststr = get_string('credit_cost', 'enrol_wallet');
+            $costinfo = '';
+            if (isset($costbefore) && is_numeric($costbefore) && $costbefore >= 0) {
+                if ($costbefore != $costafter) {
+                    $costinfo = \html_writer::div("<strong>$coststr:</strong> <del>{$costbefore} {$currency}</del> <strong>{$costafter} {$currency}</strong>", 'mb-2');
+                } else {
+                    $costinfo = \html_writer::div("<strong>$coststr:</strong> <strong>{$costbefore} {$currency}</strong>", 'mb-2');
+                }
+            }
+
+            return $costinfo . \html_writer::div(get_string('noguestaccess', 'enrol'), 'mb-2') . $OUTPUT->continue_button(get_login_url());
         }
 
         // Check if user has the capability to enrol in this context.
