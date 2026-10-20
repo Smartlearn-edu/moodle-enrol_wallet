@@ -249,12 +249,34 @@ class config {
     }
 
     /**
+     * Check if a config property name is valid or declared in docblock.
+     * @param  string $name
+     * @return bool
+     */
+    protected static function is_valid_property(string $name): bool {
+        static $declaredproperties = null;
+        if ($declaredproperties === null) {
+            $declaredproperties = [];
+            $ref = new \ReflectionClass(static::class);
+            $doc = $ref->getDocComment();
+            if ($doc && preg_match_all('/@property(?:-read|-write)?\s+[^\s]+\s+\$([a-zA-Z0-9_]+)/', $doc, $matches)) {
+                $declaredproperties = array_fill_keys($matches[1], true);
+            }
+        }
+
+        return isset($declaredproperties[$name]);
+    }
+
+    /**
      * Check if a config value exists and display debug message if not.
      * @param  string $name
      * @return bool
      */
     protected function exists($name) {
-        $exists = isset($this->$name) || property_exists($this, $name) || property_exists($this->store, $name);
+        $exists = self::is_valid_property($name)
+            || property_exists($this->store, $name)
+            || property_exists($this, $name)
+            || isset($this->$name);
 
         if (!$exists && !self::upgrading()) {
             debugging("Trying to get undefined config value $name in enrol_wallet", DEBUG_DEVELOPER);
@@ -269,7 +291,7 @@ class config {
      */
     public static function upgrading(): bool {
         global $CFG;
-        $running = during_initial_install() || isset($CFG->upgraderunning);
+        $running = during_initial_install() || !empty($CFG->upgraderunning) || defined('UPGRADE_INTERNAL');
 
         if ($running) {
             return true;
@@ -281,7 +303,7 @@ class config {
 
         $currentversion = get_config('enrol_wallet', 'version');
 
-        return $plugin->version < $currentversion;
+        return !empty($currentversion) && ($plugin->version != $currentversion);
     }
 
     /**
