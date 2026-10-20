@@ -262,6 +262,51 @@ class settings {
             0
         ));
 
+        // Modern Pricing Table Settings.
+        $page->add(new admin_setting_heading(
+            'enrol_wallet/pricingtableheading',
+            get_string('pricingtableheading', 'enrol_wallet'),
+            get_string('pricingtableheading_desc', 'enrol_wallet')
+        ));
+
+        $page->add(new admin_setting_configcheckbox(
+            'enrol_wallet/enablepricingtable',
+            get_string('enablepricingtable', 'enrol_wallet'),
+            get_string('enablepricingtable_desc', 'enrol_wallet'),
+            1
+        ));
+
+        $page->add(new admin_setting_configtext(
+            'enrol_wallet/pricingtabletitle',
+            get_string('pricingtabletitle', 'enrol_wallet'),
+            get_string('pricingtabletitle_desc', 'enrol_wallet'),
+            '',
+            PARAM_TEXT
+        ));
+
+        $page->add(new admin_setting_configtext(
+            'enrol_wallet/pricingtablesubtitle',
+            get_string('pricingtablesubtitle', 'enrol_wallet'),
+            get_string('pricingtablesubtitle_desc', 'enrol_wallet'),
+            '',
+            PARAM_TEXT
+        ));
+
+        $page->add(new admin_setting_configtext(
+            'enrol_wallet/pricingtabledefaultcolor',
+            get_string('pricingtabledefaultcolor', 'enrol_wallet'),
+            get_string('pricingtabledefaultcolor_desc', 'enrol_wallet'),
+            '#0d6efd',
+            PARAM_TEXT
+        ));
+
+        $page->add(new admin_setting_configcheckbox(
+            'enrol_wallet/showwalletbalance',
+            get_string('showwalletbalance', 'enrol_wallet'),
+            get_string('showwalletbalance_desc', 'enrol_wallet'),
+            1
+        ));
+
         // Enable or disable unenrol self.
         $page->add(new admin_setting_configcheckbox(
             'enrol_wallet/unenrolselfenabled',

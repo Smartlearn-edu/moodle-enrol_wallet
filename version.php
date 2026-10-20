@@ -23,7 +23,7 @@
  */
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2026051002;
+$plugin->version = 2026051004;
 $plugin->requires = 2024041400; // Require moodle 5.0 .
 $plugin->component = 'enrol_wallet';
 $plugin->release = '6.2.2';

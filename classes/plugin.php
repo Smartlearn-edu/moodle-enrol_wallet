@@ -587,6 +587,21 @@ class enrol_wallet_plugin extends enrol_plugin {
         require_once("$CFG->dirroot/enrol/wallet/locallib.php");
         $instance = $this->get_helper($instance);
 
+        // If modern pricing table is enabled, render all wallet instances together in a clean responsive grid.
+        $enablepricingtable = config::make()->enablepricingtable ?? 1;
+        if (!empty($enablepricingtable)) {
+            static $renderedcourses = [];
+            if (!empty($renderedcourses[$instance->courseid])) {
+                return '';
+            }
+            $renderedcourses[$instance->courseid] = true;
+
+            $pricingtable = $this->render_pricing_table($instance);
+            if (!empty($pricingtable)) {
+                return $OUTPUT->box($pricingtable, 'generalbox wallet-pricing-box border-0 bg-transparent p-0 shadow-none');
+            }
+        }
+
         // Hide this instance in case of existance of another avaliable one with lower cost.
         if ($this->hide_due_cheaper_instance($instance)) {
             return '';
@@ -716,6 +731,191 @@ class enrol_wallet_plugin extends enrol_plugin {
         $output .= $offers->format_offers_descriptions();
 
         return $OUTPUT->box($output);
+    }
+
+    /**
+     * Render the modern pricing table comparing all available wallet instances in the course.
+     *
+     * @param stdClass $firstinstance
+     * @return string HTML
+     */
+    public function render_pricing_table(stdClass $firstinstance): string {
+        global $DB, $USER, $OUTPUT, $CFG;
+        require_once("$CFG->dirroot/enrol/wallet/locallib.php");
+
+        $firsthelper = $this->get_helper($firstinstance);
+        $courseid = $firsthelper->courseid;
+        $instances = $DB->get_records('enrol', ['courseid' => $courseid, 'enrol' => 'wallet', 'status' => ENROL_INSTANCE_ENABLED], 'sortorder ASC, id ASC');
+
+        if (empty($instances)) {
+            return '';
+        }
+
+        $config = config::make();
+        $balancehelper = new \enrol_wallet\local\wallet\balance(0, $firsthelper->get_course_category());
+        $userbalance = $balancehelper->get_valid_balance();
+        $currency = $config->currency ?? 'EGP';
+
+        $cards = [];
+        $count = count($instances);
+        $colclass = match (true) {
+            $count === 1 => 'col-12 col-md-8 col-lg-6',
+            $count === 2 => 'col-12 col-md-6 col-lg-5',
+            $count === 3 => 'col-12 col-md-6 col-lg-4',
+            default => 'col-12 col-md-6 col-lg-3',
+        };
+
+        $defaultcolor = !empty($config->pricingtabledefaultcolor) ? $config->pricingtabledefaultcolor : '#0d6efd';
+
+        foreach ($instances as $inst) {
+            $helper = $this->get_helper($inst, $USER->id);
+            $costafter = $helper->get_cost_after_discount();
+            $costbefore = $helper->cost;
+            $enrolstatus = $this->can_self_enrol($helper);
+
+            // Duration text.
+            $duration = '';
+            if (!empty($helper->enrolperiod)) {
+                $days = (int)round($helper->enrolperiod / DAYSECS);
+                if ($days % 365 === 0) {
+                    $years = (int)($days / 365);
+                    $duration = ($years === 1) ? get_string('period_year', 'enrol_wallet') : get_string('period_years', 'enrol_wallet', $years);
+                } else if ($days % 30 === 0) {
+                    $months = (int)($days / 30);
+                    $duration = ($months === 1) ? get_string('period_month', 'enrol_wallet') : get_string('period_months', 'enrol_wallet', $months);
+                } else {
+                    $duration = get_string('period_days', 'enrol_wallet', $days);
+                }
+            } else {
+                $duration = get_string('period_lifetime', 'enrol_wallet');
+            }
+
+            // Features list.
+            $features = [];
+            $rawfeatures = trim($helper->customtext4 ?? '');
+            if (!empty($rawfeatures)) {
+                $lines = preg_split('/\r\n|\r|\n/', $rawfeatures);
+                foreach ($lines as $line) {
+                    $line = trim($line);
+                    if (empty($line)) {
+                        continue;
+                    }
+                    $isdisabled = false;
+                    if (str_starts_with($line, '-') || str_starts_with($line, 'x ') || str_starts_with($line, 'X ')) {
+                        $isdisabled = true;
+                        $line = ltrim(substr($line, 1));
+                    }
+                    $features[] = [
+                        'text' => $line,
+                        'is_disabled' => $isdisabled,
+                    ];
+                }
+            } else {
+                $features[] = [
+                    'text' => get_string('defaultfeature_access', 'enrol_wallet'),
+                    'is_disabled' => false,
+                ];
+            }
+
+            // Badge & Color.
+            $badge = trim($helper->customchar2 ?? '');
+            $accentcolor = trim($helper->customchar1 ?? '');
+            if (empty($accentcolor)) {
+                $accentcolor = $defaultcolor;
+            }
+
+            $isfeatured = !empty($badge) || ($helper->customchar1 !== null && $helper->customchar1 !== '');
+
+            // Enrolment & payment status.
+            $isenrolled = false;
+            if ($DB->record_exists('user_enrolments', ['userid' => $USER->id, 'enrolid' => $helper->id])) {
+                $isenrolled = true;
+            }
+
+            $canenrolbalance = ($enrolstatus === true && !$isenrolled);
+            $candirectpay = false;
+            $paymentitemid = 0;
+            $paymentcost = '';
+            $paymentsuccessurl = '';
+            $paymentdescription = '';
+
+            if (!$isenrolled && ($enrolstatus === self::INSUFFICIENT_BALANCE || $enrolstatus === self::INSUFFICIENT_BALANCE_DISCOUNTED)) {
+                if (!empty($helper->customint1) && !empty($helper->currency)) {
+                    $costtopay = $costafter;
+                    if ($currency === $helper->currency && $userbalance > 0) {
+                        $costtopay = max(0, $costafter - $userbalance);
+                    }
+                    if ($costtopay >= 0.01) {
+                        $paymentitem = \enrol_wallet\payment\item::create_item($costtopay, $helper->currency, $USER->id, $helper->id);
+                        $candirectpay = true;
+                        $paymentitemid = $paymentitem->get('id');
+                        $paymentcost = \core_payment\helper::get_cost_as_string($costtopay, $helper->currency);
+                        $paymentsuccessurl = \enrol_wallet\payment\service_provider::get_success_url('wallet', $helper->id)->out(false);
+                        $course = get_course($courseid);
+                        $paymentdescription = get_string('purchasedescription', 'enrol_wallet', format_string($course->fullname, true));
+                    }
+                }
+            }
+
+            $restrictionmsg = '';
+            if (!$isenrolled && !$canenrolbalance && !$candirectpay) {
+                if (is_string($enrolstatus)) {
+                    $restrictionmsg = $enrolstatus;
+                }
+            }
+
+            $cards[] = [
+                'instanceid' => $helper->id,
+                'courseid' => $courseid,
+                'name' => $this->get_instance_name($helper),
+                'cost' => ((int)$costafter == $costafter) ? (int)$costafter : number_format($costafter, 2),
+                'cost_before' => ((int)$costbefore == $costbefore) ? (int)$costbefore : number_format($costbefore, 2),
+                'has_discount' => ($costafter < $costbefore),
+                'currency' => $helper->currency ?: $currency,
+                'duration' => $duration,
+                'features' => $features,
+                'badge' => $badge,
+                'accentcolor' => $accentcolor,
+                'is_featured' => $isfeatured,
+                'colclass' => $colclass,
+                'is_enrolled' => $isenrolled,
+                'courseurl' => (new \moodle_url('/course/view.php', ['id' => $courseid]))->out(false),
+                'can_enrol_balance' => $canenrolbalance,
+                'confirmpage' => (\enrol_wallet\local\urls\pages::CONFIRM_ENROL->url(['id' => $courseid, 'instance' => $helper->id]))->out(false),
+                'sesskey' => sesskey(),
+                'can_direct_pay' => $candirectpay,
+                'payment_itemid' => $paymentitemid,
+                'payment_cost' => $paymentcost,
+                'payment_successurl' => $paymentsuccessurl,
+                'payment_description' => $paymentdescription,
+                'restriction_msg' => $restrictionmsg,
+                'coupons_enabled' => \enrol_wallet\local\coupons\coupons::is_enabled(),
+                'coupon_action_url' => \enrol_wallet\local\urls\actions::APPLY_COUPON->url()->out(false),
+                'enrol_page_url' => (new \moodle_url('/enrol/index.php', ['id' => $courseid]))->out_as_local_url(false),
+                'show_topup_link' => \enrol_wallet\local\utils\payment::is_topup_available(),
+                'topupurl' => \enrol_wallet\local\urls\pages::TOPUP->url()->out(false),
+            ];
+        }
+
+        $title = trim($config->pricingtabletitle ?? '');
+        if (empty($title)) {
+            $title = get_string('defaultpricingtabletitle', 'enrol_wallet');
+        }
+        $subtitle = trim($config->pricingtablesubtitle ?? '');
+        $showbalance = !empty($config->showwalletbalance);
+
+        $templatecontext = [
+            'hastitle' => !empty($title) || $showbalance,
+            'title' => $title,
+            'subtitle' => $subtitle,
+            'showbalance' => $showbalance,
+            'userbalance' => ((int)$userbalance == $userbalance) ? (int)$userbalance : number_format($userbalance, 2),
+            'currency' => $currency,
+            'topupurl' => \enrol_wallet\local\utils\payment::is_topup_available() ? \enrol_wallet\local\urls\pages::TOPUP->url()->out(false) : '',
+            'cards' => $cards,
+        ];
+
+        return $OUTPUT->render_from_template('enrol_wallet/pricing_table', $templatecontext);
     }
 
     /**
@@ -1367,6 +1567,32 @@ class enrol_wallet_plugin extends enrol_plugin {
             $mform->addElement('static', 'selfwarn', get_string('instanceeditselfwarning', 'core_enrol'), $warntext);
         }
 
+        // Pricing Card Appearance & Features (for pricing table).
+        $mform->addElement('header', 'pricing_card_header', get_string('pricingcardsettings', 'enrol_wallet'));
+
+        // Badge / Ribbon text (optional, e.g. "Most Popular" or "Best Value").
+        $mform->addElement('text', 'customchar2', get_string('cardbadge', 'enrol_wallet'));
+        $mform->setType('customchar2', PARAM_TEXT);
+        $mform->addHelpButton('customchar2', 'cardbadge', 'enrol_wallet');
+
+        // Card Accent Color / Theme.
+        $coloroptions = [
+            '' => get_string('color_default', 'enrol_wallet'),
+            '#0d6efd' => get_string('color_primary', 'enrol_wallet'),
+            '#198754' => get_string('color_success', 'enrol_wallet'),
+            '#6f42c1' => get_string('color_purple', 'enrol_wallet'),
+            '#fd7e14' => get_string('color_orange', 'enrol_wallet'),
+            '#0dcaf0' => get_string('color_cyan', 'enrol_wallet'),
+            '#212529' => get_string('color_dark', 'enrol_wallet'),
+        ];
+        $mform->addElement('select', 'customchar1', get_string('cardcolor', 'enrol_wallet'), $coloroptions);
+        $mform->addHelpButton('customchar1', 'cardcolor', 'enrol_wallet');
+
+        // Features list.
+        $mform->addElement('textarea', 'customtext4', get_string('cardfeatures', 'enrol_wallet'), ['rows' => 5, 'cols' => 50]);
+        $mform->setType('customtext4', PARAM_RAW);
+        $mform->addHelpButton('customtext4', 'cardfeatures', 'enrol_wallet');
+
         $this->include_availability($instance, $mform, $context);
 
         // Cohort restriction.
@@ -1663,6 +1889,16 @@ class enrol_wallet_plugin extends enrol_plugin {
             }
         }
 
+        if (isset($data['customchar1'])) {
+            $tovalidate['customchar1'] = PARAM_TEXT;
+        }
+        if (isset($data['customchar2'])) {
+            $tovalidate['customchar2'] = PARAM_TEXT;
+        }
+        if (isset($data['customtext4'])) {
+            $tovalidate['customtext4'] = PARAM_RAW;
+        }
+
         $typeerrors = $this->validate_param_types($data, $tovalidate);
 
         $offerserrors = offers::validate($data);
@@ -1706,7 +1942,10 @@ class enrol_wallet_plugin extends enrol_plugin {
             'customint5'      => 0,
             'customint6'      => $config->newenrols,
             'customint7'      => 0,
+            'customchar1'     => '',
+            'customchar2'     => '',
             'customtext2'     => '',
+            'customtext4'     => '',
         ];
 
         if ($config->awardssite) {

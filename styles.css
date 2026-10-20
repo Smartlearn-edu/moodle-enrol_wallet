@@ -392,3 +392,88 @@
         right: 80px;
     }
 }
+
+/* ========================================================
+   Modern Responsive Pricing Cards Table
+   ======================================================== */
+.wallet-pricing-wrapper {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@media (min-width: 992px) {
+    /* Allow enrolment page columns to comfortably expand for pricing table */
+    body#page-enrol-index #region-main .col-md-6.offset-md-3:has(.wallet-pricing-wrapper),
+    body#page-enrol-index #region-main .col-xl-6.offset-xl-3:has(.wallet-pricing-wrapper) {
+        width: 100% !important;
+        max-width: 1140px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        flex: 0 0 100% !important;
+    }
+}
+
+.wallet-pricing-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0 !important;
+    border-top: 4px solid var(--card-accent-color, #0d6efd) !important;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    overflow: visible;
+}
+
+.wallet-pricing-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.08) !important;
+    border-color: var(--card-accent-color, #0d6efd) !important;
+}
+
+.wallet-pricing-card.is-featured {
+    border: 2px solid var(--card-accent-color, #0d6efd) !important;
+    border-top: 6px solid var(--card-accent-color, #0d6efd) !important;
+    box-shadow: 0 12px 28px rgba(13, 110, 253, 0.12) !important;
+}
+
+.wallet-card-badge {
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+    z-index: 2;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.wallet-pricing-cost .display-5 {
+    letter-spacing: -1px;
+}
+
+.wallet-pricing-features-wrap li {
+    font-size: 0.93rem;
+    line-height: 1.5;
+}
+
+.wallet-pricing-features-wrap .feature-icon {
+    font-weight: bold;
+    display: inline-block;
+    min-width: 18px;
+}
+
+.wallet-pricing-balance-badge {
+    font-size: 0.9rem;
+}
+
+/* Dark mode compatibility */
+[data-bs-theme="dark"] .wallet-pricing-card,
+.theme-dark .wallet-pricing-card {
+    background: #1e293b;
+    border-color: #334155 !important;
+}
+[data-bs-theme="dark"] .wallet-pricing-card .text-dark,
+.theme-dark .wallet-pricing-card .text-dark {
+    color: #f8fafc !important;
+}
+[data-bs-theme="dark"] .wallet-pricing-balance-badge,
+.theme-dark .wallet-pricing-balance-badge {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #cbd5e1;
+}
+

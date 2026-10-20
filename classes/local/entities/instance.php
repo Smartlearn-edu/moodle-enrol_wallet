@@ -68,8 +68,10 @@ use stdClass;
  *                                              (alias for customint7).
  * @property int    $customint8                 If to enable awards.
  * @property bool   $enableawards               If to enable awards (alias for customint8).
- * @property string $customchar1                Not used.
- * @property string $customchar2                Not used.
+ * @property string $customchar1                Card accent color (hex or preset).
+ * @property string $cardcolor                  Card accent color (alias for customchar1).
+ * @property string $customchar2                Card badge or ribbon text.
+ * @property string $cardbadge                  Card badge or ribbon text (alias for customchar2).
  * @property string $customchar3                The ids of the courses required for enrolment restriction (string)
  *                                              integers imploded by ','.
  * @property string $requiredcourses            The ids of the courses required for enrolment restriction (alias for customchar3).
@@ -84,7 +86,8 @@ use stdClass;
  * @property string $availabilityconditionsjson The availability conditions in JSON format (alias for customtext2).
  * @property string $customtext3                The offers rules in JSON format.
  * @property string $offersrules                The offers rules in JSON format (alias for customtext3).
- * @property string $customtext4                Not used.
+ * @property string $customtext4                Features list for pricing table.
+ * @property string $cardfeatures               Features list for pricing table (alias for customtext4).
  *                                              Todo Use this field for localized configurations as borrow,
  *                                              cashback and more options for awards.
  * @property int    $timecreated                The time at which the instance was created.
@@ -247,8 +250,8 @@ class instance extends entity implements \IteratorAggregate {
             'customint6'  => 'allownewenrol', // Allow new enrol.
             'customint7'  => 'minrequiredcourses', // Min number or required courses.
             'customint8'  => 'enableawards', // Enable Awards.
-            'customchar1' => null, // Not used...
-            'customchar2' => null, // Not used...
+            'customchar1' => 'cardcolor', // Card accent color.
+            'customchar2' => 'cardbadge', // Card badge / ribbon.
             'customchar3' => 'requiredcourses', // Ids of the courses required for enrol
                                                 // restriction (string) integers imploded by ','.
             'customdec1'  => 'awardcondition', // Condition for award (percentage) (int) 0 - 99.
@@ -256,7 +259,7 @@ class instance extends entity implements \IteratorAggregate {
             'customtext1' => 'welcomemessage', // Welcome email content (string).
             'customtext2' => 'availabilityconditionsjson', // Restriction rules (JSON).
             'customtext3' => 'offersrules', // Offers rules (JSON).
-            'customtext4' => null, // Not used....
+            'customtext4' => 'cardfeatures', // Card features list (string).
         ];
 
         if (empty($fieldname)) {

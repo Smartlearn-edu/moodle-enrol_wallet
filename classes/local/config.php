@@ -42,6 +42,11 @@ use stdClass;
  * @property string $defaultenrol
  * @property string $discount_behavior
  * @property string $discount_field
+ * @property string $enablepricingtable         If pricing table view is enabled on enrolment page (bool).
+ * @property string $pricingtabletitle          Custom title for pricing table section.
+ * @property string $pricingtablesubtitle       Custom subtitle for pricing table section.
+ * @property string $pricingtabledefaultcolor   Default accent color for pricing cards.
+ * @property string $showwalletbalance          Whether to show user balance on pricing cards (bool).
  * @property string $enablerefund
  * @property string $enrolperiod
  * @property string $expiredaction
