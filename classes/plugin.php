@@ -505,6 +505,11 @@ class enrol_wallet_plugin extends enrol_plugin {
      */
     public function hide_due_cheaper_instance(stdClass $thisinstance): bool {
         global $DB, $USER;
+
+        if (empty(config::make()->hidecheaperinstances)) {
+            return false;
+        }
+
         $thisinstance = $this->get_helper($thisinstance);
         $courseid = $thisinstance->courseid;
 

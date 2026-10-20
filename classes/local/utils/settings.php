@@ -254,6 +254,14 @@ class settings {
             PARAM_INT
         ));
 
+        // Option to hide more expensive instances.
+        $page->add(new admin_setting_configcheckbox(
+            'enrol_wallet/hidecheaperinstances',
+            get_string('hidecheaperinstances', 'enrol_wallet'),
+            get_string('hidecheaperinstances_desc', 'enrol_wallet'),
+            0
+        ));
+
         // Enable or disable unenrol self.
         $page->add(new admin_setting_configcheckbox(
             'enrol_wallet/unenrolselfenabled',

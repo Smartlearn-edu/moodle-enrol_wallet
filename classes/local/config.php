@@ -48,6 +48,7 @@ use stdClass;
  * @property string $expirynotify
  * @property string $expirynotifyhour
  * @property string $expirynotifylast
+ * @property string $hidecheaperinstances      If cheaper instances should hide more expensive ones (bool).
  * @property string $expirythreshold
  * @property string $frontpageoffers
  * @property string $longtimenosee

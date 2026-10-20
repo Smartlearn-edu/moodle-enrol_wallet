@@ -32,6 +32,8 @@ Click on the link below to read the policy.<br/>';
 $string['agreepolicy_label'] = 'I agree to the manual refund policy.';
 $string['allowmultiple'] = 'Number of allowed instances';
 $string['allowmultiple_help'] = 'Select the number of instances allowed in a single course, 0 means unlimited.';
+$string['hidecheaperinstances'] = 'Hide more expensive instances';
+$string['hidecheaperinstances_desc'] = 'If enabled, more expensive wallet enrolment instances in the same course will be hidden from users if a cheaper instance is available.';
 $string['allusers'] = 'Transactions for all users selected';
 $string['alreadyenroled'] = 'You are already enrolled in this course, may be your time is out or you got suspended <br> contact your TA or TS for more assistance';
 $string['amount'] = 'Amount';
