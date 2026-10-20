@@ -752,10 +752,10 @@ class enrol_wallet_plugin extends enrol_plugin {
         }
 
         $config = config::make();
+        $coursecontext = \context_course::instance($courseid);
 
         // Regional filtering & country detection.
         $enablegeopricing = !isset($config->enablegeopricing) || !empty($config->enablegeopricing);
-        $showcountryswitcher = !isset($config->showcountryswitcher) || !empty($config->showcountryswitcher);
 
         $instancesbyregion = [];
         foreach ($instances as $inst) {
@@ -769,7 +769,7 @@ class enrol_wallet_plugin extends enrol_plugin {
         $activeregion = \enrol_wallet\local\utils\geo::REGION_GLOBAL;
 
         if ($enablegeopricing) {
-            $usercountry = \enrol_wallet\local\utils\geo::get_user_country();
+            $usercountry = \enrol_wallet\local\utils\geo::get_user_country($coursecontext);
             $activeregion = \enrol_wallet\local\utils\geo::get_region_for_country($usercountry);
 
             if (!empty($instancesbyregion[$activeregion])) {
@@ -778,17 +778,28 @@ class enrol_wallet_plugin extends enrol_plugin {
                 $displayinstances = $instancesbyregion[\enrol_wallet\local\utils\geo::REGION_GLOBAL];
                 $activeregion = \enrol_wallet\local\utils\geo::REGION_GLOBAL;
             } else {
-                // If neither detected nor global exist, show all available instances.
-                $displayinstances = $instances;
+                // If neither detected nor global exist, check default fallback region.
+                $defaultreg = $config->defaultfallbackregion ?? \enrol_wallet\local\utils\geo::REGION_EGYPT;
+                if (!empty($instancesbyregion[$defaultreg])) {
+                    $displayinstances = $instancesbyregion[$defaultreg];
+                    $activeregion = $defaultreg;
+                } else {
+                    $displayinstances = $instances;
+                }
             }
         }
 
-        // Build region switcher items if multiple regions exist.
+        // Build region switcher items only if user has permission and multiple regions exist.
         $regionswitcher = [];
         $hasregionswitcher = false;
+        $isadminpreview = false;
 
-        if ($showcountryswitcher && count($availableregions) > 1) {
+        $canviewswitcher = \enrol_wallet\local\utils\geo::can_view_switcher($coursecontext);
+        $ismanager = \enrol_wallet\local\utils\geo::is_manager($coursecontext);
+
+        if ($canviewswitcher && count($availableregions) > 1) {
             $hasregionswitcher = true;
+            $isadminpreview = $ismanager;
             global $PAGE;
             foreach ($availableregions as $r) {
                 try {
@@ -967,6 +978,7 @@ class enrol_wallet_plugin extends enrol_plugin {
             'currency' => $currency,
             'topupurl' => \enrol_wallet\local\utils\payment::is_topup_available() ? \enrol_wallet\local\urls\pages::TOPUP->url()->out(false) : '',
             'has_region_switcher' => $hasregionswitcher,
+            'is_admin_preview' => $isadminpreview,
             'region_switcher' => $regionswitcher,
             'active_region_label' => \enrol_wallet\local\utils\geo::get_region_label($activeregion),
             'cards' => $cards,

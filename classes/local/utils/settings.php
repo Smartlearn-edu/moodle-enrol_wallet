@@ -314,11 +314,26 @@ class settings {
             1
         ));
 
-        $page->add(new admin_setting_configcheckbox(
-            'enrol_wallet/showcountryswitcher',
-            get_string('showcountryswitcher', 'enrol_wallet'),
-            get_string('showcountryswitcher_desc', 'enrol_wallet'),
-            1
+        $switcheroptions = [
+            \enrol_wallet\local\utils\geo::SWITCHER_DISABLED => get_string('countryswitcher_hidden', 'enrol_wallet'),
+            \enrol_wallet\local\utils\geo::SWITCHER_ADMINS_ONLY => get_string('countryswitcher_admins', 'enrol_wallet'),
+            \enrol_wallet\local\utils\geo::SWITCHER_EVERYONE => get_string('countryswitcher_all', 'enrol_wallet'),
+        ];
+        $page->add(new admin_setting_configselect(
+            'enrol_wallet/countryswitcher_access',
+            get_string('countryswitcher_access', 'enrol_wallet'),
+            get_string('countryswitcher_access_desc', 'enrol_wallet'),
+            \enrol_wallet\local\utils\geo::SWITCHER_ADMINS_ONLY,
+            $switcheroptions
+        ));
+
+        $fallbackoptions = \enrol_wallet\local\utils\geo::get_region_options();
+        $page->add(new admin_setting_configselect(
+            'enrol_wallet/defaultfallbackregion',
+            get_string('defaultfallbackregion', 'enrol_wallet'),
+            get_string('defaultfallbackregion_desc', 'enrol_wallet'),
+            \enrol_wallet\local\utils\geo::REGION_EGYPT,
+            $fallbackoptions
         ));
 
         // Enable or disable unenrol self.

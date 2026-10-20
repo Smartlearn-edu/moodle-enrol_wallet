@@ -35,28 +35,84 @@ class geo {
     /** Region constant for Global / Rest of the World */
     public const REGION_GLOBAL = 'GLOBAL';
 
+    /** Switcher visibility constants */
+    public const SWITCHER_DISABLED = 0;
+    public const SWITCHER_ADMINS_ONLY = 1;
+    public const SWITCHER_EVERYONE = 2;
+
+    /**
+     * Check if the current user is an admin, manager, or has course enrol config capability.
+     *
+     * @param ?\context $context
+     * @return bool
+     */
+    public static function is_manager(?\context $context = null): bool {
+        global $USER;
+        if (empty($USER->id)) {
+            return false;
+        }
+        if (is_siteadmin($USER->id) || has_capability('moodle/site:config', \context_system::instance())) {
+            return true;
+        }
+        if ($context && has_capability('moodle/course:enrolconfig', $context)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Check if the country switcher should be visible to the current user.
+     *
+     * @param ?\context $context
+     * @return bool
+     */
+    public static function can_view_switcher(?\context $context = null): bool {
+        $config = \enrol_wallet\local\config::make();
+        if (isset($config->countryswitcher_access)) {
+            $access = (int)$config->countryswitcher_access;
+        } else if (isset($config->showcountryswitcher)) {
+            $access = !empty($config->showcountryswitcher) ? self::SWITCHER_ADMINS_ONLY : self::SWITCHER_DISABLED;
+        } else {
+            $access = self::SWITCHER_ADMINS_ONLY;
+        }
+
+        if ($access === self::SWITCHER_DISABLED) {
+            return false;
+        }
+
+        if ($access === self::SWITCHER_EVERYONE) {
+            return true;
+        }
+
+        // SWITCHER_ADMINS_ONLY: strictly check management/admin capabilities.
+        return self::is_manager($context);
+    }
+
     /**
      * Detect the user's country code (2-letter ISO uppercase).
      *
+     * @param ?\context $context
      * @return string 2-letter country code or 'GLOBAL'
      */
-    public static function get_user_country(): string {
+    public static function get_user_country(?\context $context = null): string {
         global $SESSION, $USER;
 
-        // 1. Manual switch via URL parameter.
+        $canoverride = self::can_view_switcher($context);
+
+        // 1. Manual switch via URL parameter (admins/managers or if switcher is public).
         $requestedregion = optional_param('wallet_region', '', PARAM_ALPHAEXT);
-        if (!empty($requestedregion)) {
+        if (!empty($requestedregion) && $canoverride) {
             $requestedregion = strtoupper(trim($requestedregion));
             $SESSION->wallet_selected_country = $requestedregion;
             return $requestedregion;
         }
 
-        // 2. Previously selected country in this session.
-        if (!empty($SESSION->wallet_selected_country)) {
+        // 2. Previously selected country in this session (only if allowed to switch).
+        if (!empty($SESSION->wallet_selected_country) && $canoverride) {
             return $SESSION->wallet_selected_country;
         }
 
-        // 3. Cloudflare header (instant, 0 network latency).
+        // 3. Cloudflare header (instant 0ms edge detection).
         if (!empty($_SERVER['HTTP_CF_IPCOUNTRY'])) {
             $cfcountry = strtoupper(trim($_SERVER['HTTP_CF_IPCOUNTRY']));
             if (strlen($cfcountry) === 2 && !in_array($cfcountry, ['XX', 'T1'], true)) {
@@ -65,7 +121,7 @@ class geo {
         }
 
         // 4. Standard server / proxy GeoIP headers.
-        $proxyheaders = ['HTTP_X_COUNTRY_CODE', 'GEOIP_COUNTRY_CODE', 'HTTP_GEOIP_COUNTRY_CODE'];
+        $proxyheaders = ['HTTP_X_COUNTRY_CODE', 'GEOIP_COUNTRY_CODE', 'HTTP_GEOIP_COUNTRY_CODE', 'HTTP_X_GEOIP_COUNTRY'];
         foreach ($proxyheaders as $header) {
             if (!empty($_SERVER[$header])) {
                 $code = strtoupper(trim($_SERVER[$header]));
@@ -86,7 +142,7 @@ class geo {
         }
 
         // 7. Fast IP geolocation lookup (fallback for non-Cloudflare environments).
-        $clientip = getremoteaddr();
+        $clientip = self::get_client_ip();
         if (!empty($clientip) && !in_array($clientip, ['127.0.0.1', '::1', 'unknown'], true) && !self::is_private_ip($clientip)) {
             $country = self::lookup_ip_country($clientip);
             if (!empty($country)) {
@@ -95,7 +151,90 @@ class geo {
             }
         }
 
-        return self::REGION_GLOBAL;
+        // 8. Timezone heuristic (essential for localhost / private IP development).
+        $tzcountry = self::country_from_timezone($USER->timezone ?? null);
+        if (!empty($tzcountry)) {
+            return $tzcountry;
+        }
+
+        // 9. Browser Accept-Language header heuristic.
+        $langcountry = self::country_from_accept_language();
+        if (!empty($langcountry)) {
+            return $langcountry;
+        }
+
+        // 10. Configured default fallback region (defaults to Egypt for local testing).
+        $config = \enrol_wallet\local\config::make();
+        if (!empty($config->defaultfallbackregion)) {
+            return strtoupper(trim($config->defaultfallbackregion));
+        }
+
+        return self::REGION_EGYPT;
+    }
+
+    /**
+     * Extract real client IP, inspecting common reverse proxy headers.
+     *
+     * @return string
+     */
+    public static function get_client_ip(): string {
+        $headers = ['HTTP_CF_CONNECTING_IP', 'HTTP_X_REAL_IP', 'HTTP_X_FORWARDED_FOR'];
+        foreach ($headers as $header) {
+            if (!empty($_SERVER[$header])) {
+                $raw = trim($_SERVER[$header]);
+                if (str_contains($raw, ',')) {
+                    $parts = explode(',', $raw);
+                    $raw = trim($parts[0]);
+                }
+                if (filter_var($raw, FILTER_VALIDATE_IP)) {
+                    return $raw;
+                }
+            }
+        }
+
+        return (string)getremoteaddr();
+    }
+
+    /**
+     * Map timezone to country code.
+     *
+     * @param ?string $tz
+     * @return string
+     */
+    public static function country_from_timezone(?string $tz): string {
+        if (empty($tz) || $tz === '99') {
+            $tz = \core_date::get_server_timezone();
+        }
+        $tz = trim((string)$tz);
+        $map = [
+            'Africa/Cairo' => 'EG',
+            'Egypt' => 'EG',
+            'Asia/Riyadh' => 'SA',
+            'Asia/Dubai' => 'AE',
+            'Asia/Kuwait' => 'KW',
+            'Asia/Qatar' => 'QA',
+            'Asia/Bahrain' => 'BH',
+            'Asia/Muscat' => 'OM',
+        ];
+
+        return $map[$tz] ?? '';
+    }
+
+    /**
+     * Detect country code from HTTP Accept-Language header.
+     *
+     * @return string
+     */
+    public static function country_from_accept_language(): string {
+        if (empty($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
+            return '';
+        }
+
+        if (preg_match('/[a-z]{2}[-_]([A-Z]{2})/i', $_SERVER['HTTP_ACCEPT_LANGUAGE'], $matches)) {
+            return strtoupper($matches[1]);
+        }
+
+        return '';
     }
 
     /**

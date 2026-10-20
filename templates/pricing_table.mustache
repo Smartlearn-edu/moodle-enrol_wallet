@@ -43,7 +43,12 @@
 
             {{#has_region_switcher}}
             <div class="wallet-pricing-region-switcher d-inline-flex align-items-center p-1 rounded-pill bg-light border shadow-sm">
+                {{#is_admin_preview}}
+                <span class="text-primary small px-2 fw-semibold">🛠️ {{#str}} admin_preview, enrol_wallet {{/str}}:</span>
+                {{/is_admin_preview}}
+                {{^is_admin_preview}}
                 <span class="text-muted small px-2 d-none d-sm-inline">🌍 {{#str}} selectcountry, enrol_wallet {{/str}}:</span>
+                {{/is_admin_preview}}
                 <div class="btn-group btn-group-sm" role="group">
                     {{#region_switcher}}
                     <a href="{{switch_url}}" class="btn btn-sm rounded-pill px-3 py-1 {{#is_active}}btn-primary active text-white fw-bold shadow-sm{{/is_active}}{{^is_active}}btn-light text-secondary{{/is_active}}">

@@ -48,7 +48,9 @@ use stdClass;
  * @property string $pricingtabledefaultcolor   Default accent color for pricing cards.
  * @property string $showwalletbalance          Whether to show user balance on pricing cards (bool).
  * @property string $enablegeopricing           Whether auto-country detection & regional pricing is enabled (bool).
- * @property string $showcountryswitcher        Whether to show manual country switcher on pricing table (bool).
+ * @property string $showcountryswitcher        Whether to show manual country switcher on pricing table (legacy bool).
+ * @property string $countryswitcher_access     Who can view country switcher (0=hidden, 1=admins only, 2=all).
+ * @property string $defaultfallbackregion      Default regional pricing fallback (EG, GULF, GLOBAL).
  * @property string $enablerefund
  * @property string $enrolperiod
  * @property string $expiredaction
