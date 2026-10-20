@@ -958,7 +958,7 @@ class enrol_wallet_plugin extends enrol_plugin {
                 'coupon_action_url' => \enrol_wallet\local\urls\actions::APPLY_COUPON->url()->out(false),
                 'enrol_page_url' => (new \moodle_url('/enrol/index.php', ['id' => $courseid]))->out_as_local_url(false),
                 'show_topup_link' => \enrol_wallet\local\utils\payment::is_topup_available(),
-                'topupurl' => \enrol_wallet\local\urls\pages::TOPUP->url()->out(false),
+                'topupurl' => \enrol_wallet\local\urls\pages::WALLET_TOPUP->url()->out(false),
             ];
         }
 
@@ -976,7 +976,7 @@ class enrol_wallet_plugin extends enrol_plugin {
             'showbalance' => $showbalance,
             'userbalance' => ((int)$userbalance == $userbalance) ? (int)$userbalance : number_format($userbalance, 2),
             'currency' => $currency,
-            'topupurl' => \enrol_wallet\local\utils\payment::is_topup_available() ? \enrol_wallet\local\urls\pages::TOPUP->url()->out(false) : '',
+            'topupurl' => \enrol_wallet\local\utils\payment::is_topup_available() ? \enrol_wallet\local\urls\pages::WALLET_TOPUP->url()->out(false) : '',
             'has_region_switcher' => $hasregionswitcher,
             'is_admin_preview' => $isadminpreview,
             'region_switcher' => $regionswitcher,
