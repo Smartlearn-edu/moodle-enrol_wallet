@@ -68,8 +68,9 @@ use stdClass;
  *                                              (alias for customint7).
  * @property int    $customint8                 If to enable awards.
  * @property bool   $enableawards               If to enable awards (alias for customint8).
- * @property string $customchar1                Card accent color (hex or preset).
- * @property string $cardcolor                  Card accent color (alias for customchar1).
+ * @property string $customchar1                Card metadata (JSON containing targetregion and cardcolor).
+ * @property string $targetregion               Target country/region code (EG, GULF, GLOBAL).
+ * @property string $cardcolor                  Card accent color (hex or preset).
  * @property string $customchar2                Card badge or ribbon text.
  * @property string $cardbadge                  Card badge or ribbon text (alias for customchar2).
  * @property string $customchar3                The ids of the courses required for enrolment restriction (string)
@@ -152,6 +153,16 @@ class instance extends entity implements \IteratorAggregate {
      * @return mixed
      */
     public function __get($name) {
+        if ($name === 'targetregion') {
+            $meta = \enrol_wallet\local\utils\geo::unpack_card_meta($this->instance->customchar1 ?? '');
+            return $meta['region'];
+        }
+
+        if ($name === 'cardcolor') {
+            $meta = \enrol_wallet\local\utils\geo::unpack_card_meta($this->instance->customchar1 ?? '');
+            return $meta['color'];
+        }
+
         if (property_exists($this, $name)) {
             return $this->$name;
         }
@@ -179,6 +190,20 @@ class instance extends entity implements \IteratorAggregate {
      * @return void
      */
     public function __set($name, $value) {
+        if ($name === 'targetregion') {
+            $meta = \enrol_wallet\local\utils\geo::unpack_card_meta($this->instance->customchar1 ?? '');
+            $this->instance->customchar1 = \enrol_wallet\local\utils\geo::pack_card_meta((string)$value, $meta['color']);
+            $this->mark_as_dirty();
+            return;
+        }
+
+        if ($name === 'cardcolor') {
+            $meta = \enrol_wallet\local\utils\geo::unpack_card_meta($this->instance->customchar1 ?? '');
+            $this->instance->customchar1 = \enrol_wallet\local\utils\geo::pack_card_meta($meta['region'], (string)$value);
+            $this->mark_as_dirty();
+            return;
+        }
+
         if (property_exists($this, $name)) {
             $this->$name = $value;
         } else if (property_exists($this->instance, $name)) {
@@ -205,6 +230,10 @@ class instance extends entity implements \IteratorAggregate {
      * @return bool
      */
     public function __isset($name) {
+        if ($name === 'targetregion' || $name === 'cardcolor') {
+            return true;
+        }
+
         if (property_exists($this, $name) && isset($this->$name)) {
             return true;
         }

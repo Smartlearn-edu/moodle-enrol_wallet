@@ -460,6 +460,21 @@
     font-size: 0.9rem;
 }
 
+.wallet-pricing-region-switcher {
+    font-size: 0.88rem;
+    gap: 4px;
+}
+
+.wallet-pricing-region-switcher .btn {
+    font-size: 0.85rem;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.wallet-pricing-region-switcher .btn:hover:not(.active) {
+    background-color: #e2e8f0;
+}
+
 /* Dark mode compatibility */
 [data-bs-theme="dark"] .wallet-pricing-card,
 .theme-dark .wallet-pricing-card {
@@ -475,5 +490,15 @@
     background: #0f172a !important;
     border-color: #334155 !important;
     color: #cbd5e1;
+}
+[data-bs-theme="dark"] .wallet-pricing-region-switcher,
+.theme-dark .wallet-pricing-region-switcher {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+}
+[data-bs-theme="dark"] .wallet-pricing-region-switcher .btn-light,
+.theme-dark .wallet-pricing-region-switcher .btn-light {
+    background: transparent !important;
+    color: #cbd5e1 !important;
 }
 

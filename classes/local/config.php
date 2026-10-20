@@ -47,6 +47,8 @@ use stdClass;
  * @property string $pricingtablesubtitle       Custom subtitle for pricing table section.
  * @property string $pricingtabledefaultcolor   Default accent color for pricing cards.
  * @property string $showwalletbalance          Whether to show user balance on pricing cards (bool).
+ * @property string $enablegeopricing           Whether auto-country detection & regional pricing is enabled (bool).
+ * @property string $showcountryswitcher        Whether to show manual country switcher on pricing table (bool).
  * @property string $enablerefund
  * @property string $enrolperiod
  * @property string $expiredaction

@@ -24,20 +24,36 @@
     <div class="wallet-pricing-header text-center mb-4">
         {{#title}}<h2 class="wallet-pricing-title fw-bold mb-2">{{title}}</h2>{{/title}}
         {{#subtitle}}<p class="wallet-pricing-subtitle text-muted fs-6 mb-3">{{subtitle}}</p>{{/subtitle}}
-        {{#showbalance}}
-        <div class="wallet-pricing-balance-badge d-inline-flex align-items-center px-3 py-1 rounded-pill bg-light border shadow-sm">
-            <span class="wallet-icon-badge me-2 ms-2">💳</span>
-            <span class="wallet-balance-text">
-                {{#str}} availablebalance, enrol_wallet {{/str}} 
-                <strong class="text-primary">{{userbalance}} {{currency}}</strong>
-            </span>
-            {{#topupurl}}
-            <a href="{{topupurl}}" class="btn btn-sm btn-outline-primary ms-3 me-3 py-0 px-2 rounded-pill">
-                {{#str}} topup, enrol_wallet {{/str}}
-            </a>
-            {{/topupurl}}
+        
+        <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 mb-2">
+            {{#showbalance}}
+            <div class="wallet-pricing-balance-badge d-inline-flex align-items-center px-3 py-1 rounded-pill bg-light border shadow-sm">
+                <span class="wallet-icon-badge me-2 ms-2">💳</span>
+                <span class="wallet-balance-text">
+                    {{#str}} availablebalance, enrol_wallet {{/str}} 
+                    <strong class="text-primary">{{userbalance}} {{currency}}</strong>
+                </span>
+                {{#topupurl}}
+                <a href="{{topupurl}}" class="btn btn-sm btn-outline-primary ms-3 me-3 py-0 px-2 rounded-pill">
+                    {{#str}} topup, enrol_wallet {{/str}}
+                </a>
+                {{/topupurl}}
+            </div>
+            {{/showbalance}}
+
+            {{#has_region_switcher}}
+            <div class="wallet-pricing-region-switcher d-inline-flex align-items-center p-1 rounded-pill bg-light border shadow-sm">
+                <span class="text-muted small px-2 d-none d-sm-inline">🌍 {{#str}} selectcountry, enrol_wallet {{/str}}:</span>
+                <div class="btn-group btn-group-sm" role="group">
+                    {{#region_switcher}}
+                    <a href="{{switch_url}}" class="btn btn-sm rounded-pill px-3 py-1 {{#is_active}}btn-primary active text-white fw-bold shadow-sm{{/is_active}}{{^is_active}}btn-light text-secondary{{/is_active}}">
+                        {{label}}
+                    </a>
+                    {{/region_switcher}}
+                </div>
+            </div>
+            {{/has_region_switcher}}
         </div>
-        {{/showbalance}}
     </div>
     {{/hastitle}}
 

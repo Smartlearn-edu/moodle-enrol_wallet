@@ -307,6 +307,20 @@ class settings {
             1
         ));
 
+        $page->add(new admin_setting_configcheckbox(
+            'enrol_wallet/enablegeopricing',
+            get_string('enablegeopricing', 'enrol_wallet'),
+            get_string('enablegeopricing_desc', 'enrol_wallet'),
+            1
+        ));
+
+        $page->add(new admin_setting_configcheckbox(
+            'enrol_wallet/showcountryswitcher',
+            get_string('showcountryswitcher', 'enrol_wallet'),
+            get_string('showcountryswitcher_desc', 'enrol_wallet'),
+            1
+        ));
+
         // Enable or disable unenrol self.
         $page->add(new admin_setting_configcheckbox(
             'enrol_wallet/unenrolselfenabled',
