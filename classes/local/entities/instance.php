@@ -89,6 +89,7 @@ use stdClass;
  * @property string $offersrules                The offers rules in JSON format (alias for customtext3).
  * @property string $customtext4                Features list for pricing table.
  * @property string $cardfeatures               Features list for pricing table (alias for customtext4).
+ * @property array  $customtext4_editor         Editor structure array for customtext4 (text and format).
  *                                              Todo Use this field for localized configurations as borrow,
  *                                              cashback and more options for awards.
  * @property int    $timecreated                The time at which the instance was created.
@@ -163,6 +164,13 @@ class instance extends entity implements \IteratorAggregate {
             return $meta['color'];
         }
 
+        if ($name === 'customtext4_editor') {
+            return [
+                'text' => $this->instance->customtext4 ?? '',
+                'format' => FORMAT_HTML,
+            ];
+        }
+
         if (property_exists($this, $name)) {
             return $this->$name;
         }
@@ -204,6 +212,16 @@ class instance extends entity implements \IteratorAggregate {
             return;
         }
 
+        if ($name === 'customtext4_editor') {
+            if (is_array($value)) {
+                $this->instance->customtext4 = $value['text'] ?? '';
+            } else {
+                $this->instance->customtext4 = (string)$value;
+            }
+            $this->mark_as_dirty();
+            return;
+        }
+
         if (property_exists($this, $name)) {
             $this->$name = $value;
         } else if (property_exists($this->instance, $name)) {
@@ -230,7 +248,7 @@ class instance extends entity implements \IteratorAggregate {
      * @return bool
      */
     public function __isset($name) {
-        if ($name === 'targetregion' || $name === 'cardcolor') {
+        if ($name === 'targetregion' || $name === 'cardcolor' || $name === 'customtext4_editor') {
             return true;
         }
 
