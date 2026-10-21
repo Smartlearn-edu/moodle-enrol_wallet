@@ -855,31 +855,47 @@ class enrol_wallet_plugin extends enrol_plugin {
                 $duration = get_string('period_lifetime', 'enrol_wallet');
             }
 
-            // Features list.
+            // Features list & Rich text formatting.
             $features = [];
+            $featureshtml = '';
             $rawfeatures = trim($helper->customtext4 ?? '');
+
             if (!empty($rawfeatures)) {
-                $lines = preg_split('/\r\n|\r|\n/', $rawfeatures);
-                foreach ($lines as $line) {
-                    $line = trim($line);
-                    if (empty($line)) {
-                        continue;
+                // If it already contains HTML tags (like <p>, <ul>, <li>, <div>, <br>), format it directly with Moodle filters.
+                if (preg_match('/<[a-z][\s\S]*>/i', $rawfeatures)) {
+                    $featureshtml = format_text($rawfeatures, FORMAT_HTML, ['context' => $coursecontext]);
+                } else {
+                    // Plain text: convert line-by-line into structured HTML list.
+                    $lines = preg_split('/\r\n|\r|\n/', $rawfeatures);
+                    $listitems = [];
+                    foreach ($lines as $line) {
+                        $line = trim($line);
+                        if (empty($line)) {
+                            continue;
+                        }
+                        $isdisabled = false;
+                        if (str_starts_with($line, '-') || str_starts_with($line, 'x ') || str_starts_with($line, 'X ')) {
+                            $isdisabled = true;
+                            $line = ltrim(substr($line, 1));
+                        }
+                        $features[] = [
+                            'text' => s($line),
+                            'is_disabled' => $isdisabled,
+                        ];
+                        $class = $isdisabled ? 'is-disabled' : 'is-enabled';
+                        $content = $isdisabled ? '<del>' . s($line) . '</del>' : s($line);
+                        $listitems[] = '<li class="' . $class . '">' . $content . '</li>';
                     }
-                    $isdisabled = false;
-                    if (str_starts_with($line, '-') || str_starts_with($line, 'x ') || str_starts_with($line, 'X ')) {
-                        $isdisabled = true;
-                        $line = ltrim(substr($line, 1));
+                    if (!empty($listitems)) {
+                        $featureshtml = '<ul class="wallet-features-list">' . implode('', $listitems) . '</ul>';
                     }
-                    $features[] = [
-                        'text' => $line,
-                        'is_disabled' => $isdisabled,
-                    ];
                 }
             } else {
                 $features[] = [
                     'text' => get_string('defaultfeature_access', 'enrol_wallet'),
                     'is_disabled' => false,
                 ];
+                $featureshtml = '<ul class="wallet-features-list"><li class="is-enabled">' . s(get_string('defaultfeature_access', 'enrol_wallet')) . '</li></ul>';
             }
 
             // Badge & Color.
@@ -939,9 +955,11 @@ class enrol_wallet_plugin extends enrol_plugin {
                 'currency' => $helper->currency ?: $currency,
                 'duration' => $duration,
                 'features' => $features,
+                'features_html' => $featureshtml,
                 'badge' => $badge,
                 'accentcolor' => $accentcolor,
                 'is_featured' => $isfeatured,
+                'featured_header' => !empty($badge) ? $badge : get_string('mostpopular', 'enrol_wallet'),
                 'colclass' => $colclass,
                 'is_enrolled' => $isenrolled,
                 'courseurl' => (new \moodle_url('/course/view.php', ['id' => $courseid]))->out(false),
@@ -1522,6 +1540,26 @@ class enrol_wallet_plugin extends enrol_plugin {
         $mform->addRule('cost', get_string('invalidvalue', 'enrol_wallet'), 'required', null, 'client');
         $mform->addRule('cost', get_string('invalidvalue', 'enrol_wallet'), 'numeric', null, 'client');
 
+        // Plan Details / Features list (Rich Text Editor).
+        $editoroptions = [
+            'subdirs' => 0,
+            'maxbytes' => 0,
+            'maxfiles' => 0,
+            'changeformat' => 0,
+            'context' => $context,
+            'noclean' => false,
+            'trusttext' => false,
+        ];
+        if (!isset($instance->customtext4_editor)) {
+            $instance->customtext4_editor = [
+                'text' => $instance->customtext4 ?? '',
+                'format' => FORMAT_HTML,
+            ];
+        }
+        $mform->addElement('editor', 'customtext4_editor', get_string('cardfeatures', 'enrol_wallet'), ['rows' => 6], $editoroptions);
+        $mform->setType('customtext4_editor', PARAM_RAW);
+        $mform->addHelpButton('customtext4_editor', 'cardfeatures', 'enrol_wallet');
+
         // Payment account.
         if (class_exists('\core_payment\account')) {
             $accounts = \core_payment\helper::get_payment_accounts_menu($context);
@@ -1667,11 +1705,6 @@ class enrol_wallet_plugin extends enrol_plugin {
         $mform->addElement('select', 'cardcolor', get_string('cardcolor', 'enrol_wallet'), $coloroptions);
         $mform->setDefault('cardcolor', $cardmeta['color']);
         $mform->addHelpButton('cardcolor', 'cardcolor', 'enrol_wallet');
-
-        // Features list.
-        $mform->addElement('textarea', 'customtext4', get_string('cardfeatures', 'enrol_wallet'), ['rows' => 5, 'cols' => 50]);
-        $mform->setType('customtext4', PARAM_RAW);
-        $mform->addHelpButton('customtext4', 'cardfeatures', 'enrol_wallet');
 
         $this->include_availability($instance, $mform, $context);
 
@@ -2084,12 +2117,18 @@ class enrol_wallet_plugin extends enrol_plugin {
         }
 
         if (is_array($fields)) {
+            if (isset($fields['customtext4_editor'])) {
+                $fields['customtext4'] = is_array($fields['customtext4_editor']) ? ($fields['customtext4_editor']['text'] ?? '') : (string)$fields['customtext4_editor'];
+            }
             if (isset($fields['targetregion']) || isset($fields['cardcolor'])) {
                 $region = $fields['targetregion'] ?? \enrol_wallet\local\utils\geo::REGION_GLOBAL;
                 $color = $fields['cardcolor'] ?? '';
                 $fields['customchar1'] = \enrol_wallet\local\utils\geo::pack_card_meta($region, $color);
             }
         } else if (is_object($fields)) {
+            if (isset($fields->customtext4_editor)) {
+                $fields->customtext4 = is_array($fields->customtext4_editor) ? ($fields->customtext4_editor['text'] ?? '') : (string)$fields->customtext4_editor;
+            }
             if (isset($fields->targetregion) || isset($fields->cardcolor)) {
                 $region = $fields->targetregion ?? \enrol_wallet\local\utils\geo::REGION_GLOBAL;
                 $color = $fields->cardcolor ?? '';
@@ -2130,6 +2169,9 @@ class enrol_wallet_plugin extends enrol_plugin {
         }
 
         if (is_object($data)) {
+            if (isset($data->customtext4_editor)) {
+                $data->customtext4 = is_array($data->customtext4_editor) ? ($data->customtext4_editor['text'] ?? '') : (string)$data->customtext4_editor;
+            }
             if (isset($data->targetregion) || isset($data->cardcolor)) {
                 $existingmeta = \enrol_wallet\local\utils\geo::unpack_card_meta($instance->customchar1 ?? '');
                 $region = $data->targetregion ?? $existingmeta['region'];
@@ -2137,6 +2179,9 @@ class enrol_wallet_plugin extends enrol_plugin {
                 $data->customchar1 = \enrol_wallet\local\utils\geo::pack_card_meta($region, $color);
             }
         } else if (is_array($data)) {
+            if (isset($data['customtext4_editor'])) {
+                $data['customtext4'] = is_array($data['customtext4_editor']) ? ($data['customtext4_editor']['text'] ?? '') : (string)$data['customtext4_editor'];
+            }
             if (isset($data['targetregion']) || isset($data['cardcolor'])) {
                 $existingmeta = \enrol_wallet\local\utils\geo::unpack_card_meta($instance->customchar1 ?? '');
                 $region = $data['targetregion'] ?? $existingmeta['region'];
